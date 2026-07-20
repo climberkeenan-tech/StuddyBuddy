@@ -1,3 +1,15 @@
 export * from './types';
 export * from './structured';
-// Provider implementations + registry are exported here as they land.
+export * from './ai-service';
+export * from './registry';
+export * from './builtin-plugin';
+export * from './providers/http';
+export * from './providers/anthropic';
+export * from './providers/openai';
+export * from './providers/gemini';
+export * from './providers/ollama';
+export * from './providers/mock';
+export * from './embeddings/local-hash';
+export * from './embeddings/openai';
+export * from './embeddings/ollama';
+export * from './embeddings/registry';
