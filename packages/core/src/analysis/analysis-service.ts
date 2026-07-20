@@ -34,10 +34,13 @@ export class AnalysisService {
 
   /**
    * Analyze a lecture end-to-end and persist the result.
+   *
+   * @param jobId Progress events are emitted under this id. Pass the same id the
+   *   caller surfaces (e.g. the one returned from the `analysis.run` IPC method)
+   *   so the renderer can track this job; defaults to a fresh id otherwise.
    * @throws SbError NOT_FOUND when the lecture or its transcript is missing.
    */
-  async run(lectureId: string): Promise<LectureAnalysis> {
-    const jobId = newId();
+  async run(lectureId: string, jobId: string = newId()): Promise<LectureAnalysis> {
     this.emit({ jobId, progress: 0, message: 'Queued analysis', state: 'queued' });
     try {
       const lecture = await this.repos.lectures.get(lectureId);

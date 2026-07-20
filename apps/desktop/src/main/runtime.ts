@@ -422,9 +422,11 @@ export async function createRuntime(options: RuntimeOptions): Promise<Runtime> {
     analysis: {
       get: (lectureId) => analysisService.get(lectureId),
       run: async (lectureId) => {
+        // Thread one job id through both the emitted progress events and the
+        // returned value so the renderer can track this job to completion.
         const jobId = newId();
         void analysisService
-          .run(lectureId)
+          .run(lectureId, jobId)
           .catch((e) => logger.error('analysis run failed', { error: (e as Error).message }));
         return { jobId };
       },
