@@ -1,3 +1,4 @@
 export * from './types';
-// Embedding providers, LocalVectorStore, KnowledgeBase (indexing/search/ask)
-// are exported here as they land.
+export * from './local-vector-store';
+export * from './indexer';
+export * from './knowledge-service';
