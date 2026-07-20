@@ -647,13 +647,15 @@ export function createMockApi(emit: EmitFn): IpcApi {
       },
       async stop() {
         const id = recording.lectureId;
+        // Capture elapsed before the idle reset below — the deferred job reads it.
+        const elapsedMs = recording.elapsedMs;
         stopTimer();
         recording = { ...recording, state: 'stopping' };
         emit('recording:status', { ...recording });
         if (!id) throw Object.assign(new Error('No active recording'), { code: 'NO_RECORDING' });
         const lecture = store.lectures.get(id);
         if (lecture) {
-          const updated: Lecture = { ...lecture, status: 'processing', durationMs: recording.elapsedMs, updatedAt: Date.now() };
+          const updated: Lecture = { ...lecture, status: 'processing', durationMs: elapsedMs, updatedAt: Date.now() };
           store.lectures.set(id, updated);
         }
         // Kick off a short processing job, then mark ready.
@@ -666,7 +668,7 @@ export function createMockApi(emit: EmitFn): IpcApi {
           if (lec) store.lectures.set(id, { ...lec, status: 'ready', topics: bioAnalysis.concepts.slice(0, 3).map((c) => c.name), updatedAt: Date.now() });
           emit('job:progress', { jobId, kind: 'analysis', progress: 1, message: 'Lecture ready', state: 'succeeded' });
           emit('lecture:ready', { lectureId: id });
-          bumpGamification(50, Math.round(recording.elapsedMs / 60000) || 1);
+          bumpGamification(50, Math.round(elapsedMs / 60000) || 1);
         }, GEN_DELAY);
         recording = { lectureId: null, state: 'idle', elapsedMs: 0, audioLevel: 0, segmentCount: 0 };
         emit('recording:status', { ...recording });

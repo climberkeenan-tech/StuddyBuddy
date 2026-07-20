@@ -97,12 +97,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({ settings: optimistic });
     applyTheme(optimistic.theme, optimistic.reduceMotion);
     try {
-      const saved = await api.settings.update(patch);
-      set({ settings: saved });
-      applyTheme(saved.theme, saved.reduceMotion);
+      await api.settings.update(patch);
+      // Re-merge only this patch over the LATEST store state rather than
+      // overwriting with the backend's full snapshot — otherwise a second
+      // update that lands mid-flight would be clobbered (last-response-wins).
+      const merged = { ...get().settings, ...patch };
+      set({ settings: merged });
+      applyTheme(merged.theme, merged.reduceMotion);
     } catch (err) {
-      set({ settings: previous });
-      applyTheme(previous.theme, previous.reduceMotion);
+      // Roll back only the keys we changed, preserving any concurrent update.
+      const revert = Object.fromEntries(
+        Object.keys(patch).map((k) => [k, previous[k as keyof typeof previous]]),
+      );
+      const rolledBack = { ...get().settings, ...revert };
+      set({ settings: rolledBack });
+      applyTheme(rolledBack.theme, rolledBack.reduceMotion);
       useToastStore.getState().push({ variant: 'error', title: 'Could not save settings', description: err instanceof Error ? err.message : undefined });
     }
   },

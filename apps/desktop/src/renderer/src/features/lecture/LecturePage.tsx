@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { BookOpenText, FileText, GraduationCap, ListTree, NotebookPen } from 'lucide-react';
 import type { Course, LectureAnalysis, Transcript } from '@studdybuddy/shared';
 import type { Lecture } from '@studdybuddy/shared';
@@ -37,10 +37,19 @@ const TABS = [
  */
 export default function LecturePage() {
   const { lectureId, courseId } = useParams<{ lectureId: string; courseId: string }>();
+  const [searchParams] = useSearchParams();
   const nav = useNavigate();
   const toast = useToast();
   const [tab, setTab] = useState<TabValue>('transcript');
   const [kitJobId, setKitJobId] = useState<string | null>(null);
+
+  // Deep-link support: search hits and Q&A citations navigate here with a
+  // `?t=<ms>` offset. Open the Transcript tab and focus that moment.
+  const focusParam = searchParams.get('t');
+  const focusMs = focusParam !== null && focusParam !== '' ? Number(focusParam) : undefined;
+  useEffect(() => {
+    if (focusMs !== undefined && Number.isFinite(focusMs)) setTab('transcript');
+  }, [focusMs]);
 
   const core = useAsync<CoreData>(async () => {
     if (!lectureId) return { lecture: null, course: null, analysis: null, transcript: null };
@@ -135,7 +144,12 @@ export default function LecturePage() {
 
       <div role="tabpanel">
         {tab === 'transcript' && (
-          <TranscriptTab lectureId={lecture.id} transcript={transcript} processing={Boolean(processing)} />
+          <TranscriptTab
+            lectureId={lecture.id}
+            transcript={transcript}
+            processing={Boolean(processing)}
+            focusMs={focusMs !== undefined && Number.isFinite(focusMs) ? focusMs : undefined}
+          />
         )}
         {tab === 'notes' && (
           <NotesTab

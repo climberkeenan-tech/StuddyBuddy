@@ -25,7 +25,10 @@ const MODE_OPTIONS = [
 export default function SearchPage() {
   const [params] = useSearchParams();
 
-  const initialMode: Mode = params.get('mode') === 'search' ? 'search' : 'ask';
+  // A `?q=` deep-link (e.g. from Smart Review) implies Ask mode.
+  const initialQuestion = params.get('q') ?? undefined;
+  const initialMode: Mode =
+    params.get('mode') === 'search' && !initialQuestion ? 'search' : 'ask';
   const [mode, setMode] = useState<Mode>(initialMode);
 
   const initialScope = useMemo<SearchScope>(() => {
@@ -60,7 +63,11 @@ export default function SearchPage() {
 
       <ScopeSelector scope={scope} onChange={setScope} />
 
-      {mode === 'ask' ? <AskPanel scope={scope} /> : <SearchPanel scope={scope} />}
+      {mode === 'ask' ? (
+        <AskPanel scope={scope} initialQuestion={initialQuestion} />
+      ) : (
+        <SearchPanel scope={scope} />
+      )}
     </div>
   );
 }

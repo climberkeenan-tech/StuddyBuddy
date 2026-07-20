@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, MessageCircleQuestion, Search, X } from 'lucide-react';
 import type { SearchHit, Transcript } from '@studdybuddy/shared';
 import { api } from '@renderer/lib/api';
@@ -13,6 +13,8 @@ export interface TranscriptTabProps {
   lectureId: string;
   transcript: Transcript | undefined;
   processing: boolean;
+  /** When set (from a `?t=` deep-link), scroll to and highlight this moment. */
+  focusMs?: number;
 }
 
 /**
@@ -21,10 +23,40 @@ export interface TranscriptTabProps {
  * its offset and click-to-copy. Typing a keyword runs a lecture-scoped search
  * and shows only the matching moments.
  */
-export function TranscriptTab({ lectureId, transcript, processing }: TranscriptTabProps) {
+export function TranscriptTab({ lectureId, transcript, processing, focusMs }: TranscriptTabProps) {
   const toast = useToast();
   const [query, setQuery] = useState('');
   const debounced = useDebounce(query.trim(), 250);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [highlightedId, setHighlightedId] = useState<string | null>(null);
+
+  // The segment to focus for a `?t=` deep-link: the last one that starts at or
+  // before the requested offset (falling back to the first).
+  const focusId = useMemo(() => {
+    if (focusMs === undefined || !transcript || transcript.segments.length === 0) return null;
+    let candidate = transcript.segments[0] ?? null;
+    for (const s of transcript.segments) {
+      if (s.startMs <= focusMs) candidate = s;
+      else break;
+    }
+    return candidate?.id ?? null;
+  }, [focusMs, transcript]);
+
+  // Scroll to + briefly highlight the focused segment once it is rendered.
+  useEffect(() => {
+    if (!focusId || debounced) return;
+    setHighlightedId(focusId);
+    const raf = requestAnimationFrame(() => {
+      containerRef.current
+        ?.querySelector(`[data-seg-id="${focusId}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    });
+    const clear = setTimeout(() => setHighlightedId(null), 2600);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(clear);
+    };
+  }, [focusId, debounced]);
 
   const {
     data: hits,
@@ -59,7 +91,7 @@ export function TranscriptTab({ lectureId, transcript, processing }: TranscriptT
   const filtering = debounced.length > 0;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={containerRef}>
       <Input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
@@ -105,7 +137,11 @@ export function TranscriptTab({ lectureId, transcript, processing }: TranscriptT
               return (
                 <h3
                   key={s.id}
-                  className="flex items-center gap-3 pb-1 pt-5 font-display text-base font-semibold text-t1 first:pt-0"
+                  data-seg-id={s.id}
+                  className={cn(
+                    'flex items-center gap-3 rounded-lg pb-1 pt-5 font-display text-base font-semibold text-t1 transition-colors first:pt-0',
+                    highlightedId === s.id && 'bg-primary/10 ring-2 ring-primary/40',
+                  )}
                 >
                   <span className="text-xs font-normal tabular-nums text-t3">{formatOffset(s.startMs)}</span>
                   {s.text}
@@ -116,9 +152,11 @@ export function TranscriptTab({ lectureId, transcript, processing }: TranscriptT
             return (
               <SegmentRow
                 key={s.id}
+                segId={s.id}
                 atMs={s.startMs}
                 text={s.text}
                 question={isQuestion}
+                highlighted={highlightedId === s.id}
                 onCopy={() => onCopy(s.text)}
               />
             );
@@ -134,19 +172,25 @@ function SegmentRow({
   text,
   keywords,
   question,
+  highlighted,
+  segId,
   onCopy,
 }: {
   atMs: number;
   text: string;
   keywords?: string[];
   question?: boolean;
+  highlighted?: boolean;
+  segId?: string;
   onCopy: () => void;
 }) {
   return (
     <div
+      data-seg-id={segId}
       className={cn(
         'group relative flex gap-3 rounded-xl px-3 py-2 transition-colors hover:bg-overlay',
         question && 'border border-primary/25 bg-primary/5',
+        highlighted && 'bg-primary/10 ring-2 ring-primary/40',
       )}
     >
       <button

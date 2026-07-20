@@ -5,6 +5,7 @@ import type { Slide } from '@studdybuddy/shared';
 import { cn } from '@renderer/lib/cn';
 import { fadeSlideUp, staggerChildren } from '@renderer/lib/motion';
 import { MermaidDiagram } from './MermaidDiagram';
+import { ChartBoundary } from './ChartBoundary';
 
 const SlideChart = lazy(() => import('./SlideChart'));
 
@@ -141,17 +142,19 @@ export function SlideStage({ slide, deckAccent, dark, className }: SlideStagePro
             <SlideTitle title={slide.title} subtitle={slide.subtitle} />
             <motion.div variants={fadeSlideUp} className="relative mt-6 min-h-0 flex-1">
               {slide.chart ? (
-                <Suspense
-                  fallback={
-                    <div className="flex h-full items-center justify-center text-t3">
-                      <span className="h-6 w-6 animate-spin-slow rounded-full border-2 border-stroke border-t-primary" />
+                <ChartBoundary>
+                  <Suspense
+                    fallback={
+                      <div className="flex h-full items-center justify-center text-t3">
+                        <span className="h-6 w-6 animate-spin-slow rounded-full border-2 border-stroke border-t-primary" />
+                      </div>
+                    }
+                  >
+                    <div className="absolute inset-0">
+                      <SlideChart spec={slide.chart} dark={dark} />
                     </div>
-                  }
-                >
-                  <div className="absolute inset-0">
-                    <SlideChart spec={slide.chart} dark={dark} />
-                  </div>
-                </Suspense>
+                  </Suspense>
+                </ChartBoundary>
               ) : (
                 <p className="text-t3">No chart data for this slide.</p>
               )}

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowUp, Clock, Quote, Sparkles, Trash2, User } from 'lucide-react';
 import type { AskAnswer, Citation, SearchScope } from '@studdybuddy/shared';
@@ -38,6 +38,8 @@ let entrySeq = 0;
 
 export interface AskPanelProps {
   scope: SearchScope;
+  /** Question to auto-ask on mount (from a `?q=` deep-link, e.g. Smart Review). */
+  initialQuestion?: string;
 }
 
 /**
@@ -45,7 +47,7 @@ export interface AskPanelProps {
  * renders as Markdown with numbered citation chips that scroll to a sources
  * list; every source deep-links into the lecture at its timestamp.
  */
-export function AskPanel({ scope }: AskPanelProps) {
+export function AskPanel({ scope, initialQuestion }: AskPanelProps) {
   const [question, setQuestion] = useState('');
   const [entries, setEntries] = useState<QaEntry[]>([]);
   const [pending, setPending] = useState(false);
@@ -81,6 +83,16 @@ export function AskPanel({ scope }: AskPanelProps) {
       scrollToEnd();
     }
   };
+
+  // Auto-run a deep-linked question exactly once on mount.
+  const didAutoAsk = useRef(false);
+  useEffect(() => {
+    if (!didAutoAsk.current && initialQuestion && initialQuestion.trim()) {
+      didAutoAsk.current = true;
+      void ask(initialQuestion);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuestion]);
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
