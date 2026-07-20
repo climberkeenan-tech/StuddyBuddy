@@ -1,4 +1,4 @@
-import { app, BrowserWindow, shell } from 'electron';
+import { app, BrowserWindow, session, shell, systemPreferences } from 'electron';
 import path from 'node:path';
 
 /**
@@ -8,6 +8,33 @@ import path from 'node:path';
  */
 
 const isDev = !!process.env.ELECTRON_RENDERER_URL;
+
+/** Permissions the renderer is allowed to use (microphone capture for recording). */
+const ALLOWED_PERMISSIONS = new Set(['media', 'audioCapture', 'microphone']);
+
+/**
+ * Grant the renderer microphone access and, on macOS, trigger the OS-level
+ * permission prompt. Without this, `getUserMedia` in the recording studio is
+ * silently denied (macOS additionally requires the NSMicrophoneUsageDescription
+ * declared in the packaged app's Info.plist — see electron-builder.yml).
+ */
+async function configureMediaPermissions(): Promise<void> {
+  const ses = session.defaultSession;
+  ses.setPermissionRequestHandler((_wc, permission, callback) => {
+    callback(ALLOWED_PERMISSIONS.has(permission));
+  });
+  ses.setPermissionCheckHandler((_wc, permission) => ALLOWED_PERMISSIONS.has(permission));
+
+  if (process.platform === 'darwin') {
+    try {
+      // Prompts the user once (macOS Privacy → Microphone). Returns quickly if
+      // already decided. Recording still works if the user grants it later.
+      await systemPreferences.askForMediaAccess('microphone');
+    } catch {
+      // Non-fatal: the in-app record screen surfaces a friendly denied state.
+    }
+  }
+}
 
 async function createWindow(): Promise<BrowserWindow> {
   const win = new BrowserWindow({
@@ -48,6 +75,7 @@ app.whenReady().then(async () => {
   // produces a window with a readable error instead of a silent crash.
   const { bootstrap } = await import('./bootstrap');
   await bootstrap();
+  await configureMediaPermissions();
   await createWindow();
 
   app.on('activate', () => {
