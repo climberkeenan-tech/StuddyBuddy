@@ -19,6 +19,9 @@ export default defineConfig({
     },
   },
   plugins: [react()],
+  // The shareable web demo starts as a pristine, out-of-the-box app (no seeded
+  // classes or progress); the mock backend reads this flag.
+  define: { 'import.meta.env.VITE_SB_EMPTY': JSON.stringify('1') },
   build: {
     outDir: resolve(__dirname, 'out/web'),
     emptyOutDir: true,

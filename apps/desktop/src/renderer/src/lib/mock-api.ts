@@ -372,7 +372,32 @@ interface MockStore {
   settings: AppSettings;
 }
 
+/**
+ * When true, the mock starts as a pristine, never-used app (no classes, no
+ * lectures, zero progress) — the real out-of-the-box experience. Enabled for
+ * the standalone web demo via VITE_SB_EMPTY; unit tests keep the seeded data.
+ */
+const START_EMPTY =
+  typeof import.meta !== 'undefined' &&
+  (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_SB_EMPTY === '1';
+
+function emptyStore(): MockStore {
+  return {
+    courses: new Map(),
+    lectures: new Map(),
+    transcripts: new Map(),
+    analyses: new Map(),
+    materials: new Map(),
+    decks: new Map(),
+    attempts: [],
+    examPrep: new Map(),
+    gamification: buildGamification(),
+    settings: { ...DEFAULT_SETTINGS, onboardingComplete: true, aiProvider: 'mock' },
+  };
+}
+
 function buildStore(): MockStore {
+  if (START_EMPTY) return emptyStore();
   const courses = new Map<string, Course>([
     ['course-bio', { id: 'course-bio', name: 'Biology', instructor: 'Dr. Elena Vasquez', semester: 'Fall 2026', color: '#7c3aed', icon: 'dna', description: 'Molecular and cellular foundations of life.', examDates: [NOW + 12 * DAY], archived: false, createdAt: NOW - 40 * DAY, updatedAt: NOW - 2 * DAY }],
     ['course-hist', { id: 'course-hist', name: 'European History', instructor: 'Prof. Marcus Reed', semester: 'Fall 2026', color: '#d97706', icon: 'landmark', description: 'Revolutions and the making of the modern world.', examDates: [NOW + 26 * DAY], archived: false, createdAt: NOW - 38 * DAY, updatedAt: NOW - 5 * DAY }],
@@ -1033,6 +1058,28 @@ function buildDashboard(store: MockStore): DashboardSummary {
     .filter((d) => d.dueCards > 0);
   const upcomingExams = courses.flatMap((c) => (c.examDates ?? []).filter((d) => d - now < 30 * DAY && d > now).map((date) => ({ courseId: c.id, courseName: c.name, date })));
   const today = dayKey();
+
+  // Recommendations derive from what actually exists, so a brand-new (empty)
+  // app shows onboarding prompts and never deep-links to missing content.
+  const recommendations: DashboardSummary['recommendations'] = [];
+  if (courses.length === 0) {
+    recommendations.push(
+      { title: 'Add your first class', detail: 'Use the ＋ next to “Your Classes” to create one — Biology, History, anything.' },
+      { title: 'Record your first lecture', detail: 'Tap Record up top to capture a class live and get an instant transcript.' },
+      { title: 'Everything stays on your device', detail: 'Your lectures, notes, and progress are stored locally and privately.' },
+    );
+  } else {
+    const firstReady = [...store.lectures.values()].find((l) => l.status === 'ready');
+    if (firstReady) {
+      recommendations.push({ title: `Study “${firstReady.title}”`, detail: 'Open its notes, flashcards, quiz, and slides.', courseId: firstReady.courseId, lectureId: firstReady.id });
+    }
+    const examCourse = courses.find((c) => (c.examDates ?? []).some((d) => d > now));
+    if (examCourse) {
+      recommendations.push({ title: `Prep for ${examCourse.name}`, detail: 'Generate a cumulative exam-prep plan to see what to study first.', courseId: examCourse.id });
+    }
+    recommendations.push({ title: 'Start a study streak', detail: 'Study any lecture today to begin your streak — consistency is where it clicks.' });
+  }
+
   return {
     courses: clone(courses),
     recentLectures: clone(
@@ -1051,11 +1098,7 @@ function buildDashboard(store: MockStore): DashboardSummary {
     level: g.level,
     studyMinutesToday: g.dailyMinutes[today] ?? 0,
     studyMinutesWeek: Object.entries(g.dailyMinutes).reduce((sum, [, m]) => sum + m, 0),
-    recommendations: [
-      { title: 'Record your first lecture', detail: 'Tap Record up top to capture a class live and get an instant transcript.' },
-      { title: 'Explore the DNA Replication sample', detail: 'See notes, flashcards, a quiz, and slides generated from a lecture.', courseId: 'course-bio', lectureId: 'lec-bio-1' },
-      { title: 'Start a study streak', detail: 'Study any lecture today to begin your streak — consistency is where it clicks.' },
-    ],
+    recommendations,
   };
 }
 

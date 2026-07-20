@@ -23,10 +23,8 @@ describe('DashboardPage', () => {
     // A stat label from the header row.
     expect(await screen.findByText('Study streak')).toBeTruthy();
 
-    // A recommendation seeded by the mock dashboard summary.
-    expect(
-      await screen.findByText('Explore the DNA Replication sample'),
-    ).toBeTruthy();
+    // A content-derived recommendation from the mock dashboard summary.
+    expect(await screen.findByText('Start a study streak')).toBeTruthy();
   });
 
   it('shows a recent lecture to continue studying', async () => {
