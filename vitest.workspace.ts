@@ -12,7 +12,7 @@ export default defineWorkspace([
     test: {
       name: 'node',
       environment: 'node',
-      include: ['packages/*/test/**/*.test.ts'],
+      include: ['packages/*/test/**/*.test.ts', 'apps/desktop/src/main/**/*.test.ts'],
       passWithNoTests: true,
     },
     resolve: { alias: aliases },
