@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { MicOff, Pause, Play, Radio, Sparkles } from 'lucide-react';
 import type { RecordingStatus, TranscriptSegment } from '@studdybuddy/shared';
-import { api } from '@renderer/lib/api';
+import { api, usingMockApi } from '@renderer/lib/api';
 import { useAsync, useIpcEvent, usePageTitle } from '@renderer/lib/hooks';
 import { formatOffset } from '@renderer/lib/format';
 import { fadeSlideUp, staggerChildren } from '@renderer/lib/motion';
@@ -140,8 +140,11 @@ export default function RecordPage() {
     }
     setStarting(true);
 
-    let demo = forceDemo;
-    if (!forceDemo && mic.supported) {
+    // In the web preview there is no real backend and a browser tab can't reach
+    // the microphone, so go straight to a simulated capture instead of prompting
+    // for (and failing) mic access. The desktop app records real audio.
+    let demo = forceDemo || usingMockApi;
+    if (!demo && mic.supported) {
       const result = await mic.start();
       if (result === 'denied') {
         // The denied recovery panel renders from mic.state.
@@ -204,6 +207,17 @@ export default function RecordPage() {
         title="Record a lecture"
         subtitle="Capture live audio and get an instant, structured transcript."
       />
+
+      {usingMockApi && !active && (
+        <div className="flex items-start gap-3 rounded-panel border border-primary/25 bg-primary/5 px-4 py-3 text-sm text-t2">
+          <Sparkles size={16} className="mt-0.5 shrink-0 text-primary" />
+          <p>
+            <span className="font-semibold text-t1">Web preview.</span> A browser tab can&apos;t use
+            your microphone, so recording here is <span className="font-medium text-t1">simulated</span>{' '}
+            to show the live transcript → notes → quiz flow. The desktop app captures your real mic.
+          </p>
+        </div>
+      )}
 
       <motion.div
         className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
@@ -322,12 +336,18 @@ export default function RecordPage() {
 
                 <div className="space-y-1 text-center">
                   <p className="font-display text-base font-semibold text-t1">
-                    {effectiveCourseId ? 'Ready when you are' : 'Pick a class to begin'}
+                    {courses.length === 0
+                      ? 'Add a class to begin'
+                      : effectiveCourseId
+                        ? 'Ready when you are'
+                        : 'Pick a class to begin'}
                   </p>
                   <p className="mx-auto max-w-xs text-xs text-t3">
-                    Tap the button to start capturing. You can pause anytime and stop when class ends.
+                    {courses.length === 0
+                      ? 'Create a class with the ＋ next to “Your Classes” in the sidebar, then come back to record.'
+                      : 'Tap the button to start capturing. You can pause anytime and stop when class ends.'}
                   </p>
-                  {!mic.supported && (
+                  {!mic.supported && courses.length > 0 && (
                     <span className="mt-2 inline-flex items-center gap-1.5 text-xs text-t3">
                       <Radio size={12} />
                       Demo mode — this preview simulates a live lecture.
