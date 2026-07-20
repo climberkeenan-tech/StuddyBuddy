@@ -21,6 +21,7 @@
 export * from './env';
 export * from './infra/logger';
 export * from './infra/event-bus';
+export * from './infra/core-events';
 export * from './infra/errors';
 export * from './infra/retry';
 export * from './plugins/registry';

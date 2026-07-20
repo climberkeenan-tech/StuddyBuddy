@@ -55,6 +55,20 @@ export interface EmbeddingProvider {
 }
 
 /**
+ * Facade over the active AI provider that feature services depend on.
+ * `available()` is false when the user selected the offline "mock" provider
+ * or the active provider is missing credentials — features then fall back to
+ * their deterministic heuristic paths so the app stays fully functional.
+ */
+export interface AIFacade {
+  available(): Promise<boolean>;
+  /** "provider/model" string for stamping generated documents. */
+  activeLabel(): string;
+  chat(request: ChatRequest): Promise<ChatResult>;
+  generate: import('./structured').StructuredGenerator;
+}
+
+/**
  * Structured generation: prompt an LLM for JSON matching a zod schema, with
  * automatic extraction, validation, and bounded repair retries.
  */

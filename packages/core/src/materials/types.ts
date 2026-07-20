@@ -21,6 +21,12 @@ export interface GenerationContext {
   difficulty: Difficulty;
   /** Structured-output helper bound to the active AI provider. */
   generate: StructuredGenerator;
+  /**
+   * False when no real LLM is configured — generators must then produce
+   * content deterministically from the transcript+analysis (heuristic path)
+   * instead of calling `generate`.
+   */
+  aiAvailable: boolean;
   courseName: string;
 }
 
