@@ -25,7 +25,7 @@ describe('DashboardPage', () => {
 
     // A recommendation seeded by the mock dashboard summary.
     expect(
-      await screen.findByText('Review DNA Replication weak areas'),
+      await screen.findByText('Explore the DNA Replication sample'),
     ).toBeTruthy();
   });
 

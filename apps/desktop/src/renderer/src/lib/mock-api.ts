@@ -341,24 +341,16 @@ const ACHIEVEMENTS: AchievementDef[] = [
 ];
 
 function buildGamification(): GamificationState {
-  const xp = 1840;
-  const daily: Record<string, number> = {};
-  for (let i = 13; i >= 0; i--) {
-    const key = dayKey(NOW - i * DAY);
-    daily[key] = i < 4 ? [35, 20, 48, 25][3 - i] ?? 0 : Math.max(0, Math.round(30 - Math.random() * 30));
-  }
+  // A brand-new user hasn't studied yet — start honest. Progress only appears
+  // as the student actually records, reviews, and studies (which the mock
+  // credits live via bumpGamification). This mirrors the real app's first run.
   return {
-    xp,
-    level: levelForXp(xp),
-    streak: { current: 4, best: 11, lastStudyDay: dayKey(NOW) },
-    unlocked: [
-      { achievementId: 'first-lecture', unlockedAt: NOW - 12 * DAY },
-      { achievementId: 'note-taker', unlockedAt: NOW - 11 * DAY },
-      { achievementId: 'streak-3', unlockedAt: NOW - 2 * DAY },
-      { achievementId: 'quiz-ace', unlockedAt: NOW - 6 * DAY },
-    ],
-    studyMinutes: 742,
-    dailyMinutes: daily,
+    xp: 0,
+    level: 1,
+    streak: { current: 0, best: 0, lastStudyDay: '' },
+    unlocked: [],
+    studyMinutes: 0,
+    dailyMinutes: {},
     updatedAt: NOW,
   };
 }
@@ -1060,9 +1052,9 @@ function buildDashboard(store: MockStore): DashboardSummary {
     studyMinutesToday: g.dailyMinutes[today] ?? 0,
     studyMinutesWeek: Object.entries(g.dailyMinutes).reduce((sum, [, m]) => sum + m, 0),
     recommendations: [
-      { title: 'Review DNA Replication weak areas', detail: 'Okazaki fragments tripped up most students — a 5-minute refresh will help.', courseId: 'course-bio', lectureId: 'lec-bio-1' },
-      { title: 'Biology exam in 12 days', detail: 'Generate an exam-prep plan to see exactly what to study first.', courseId: 'course-bio' },
-      { title: 'Keep your 4-day streak alive', detail: 'Review a few flashcards today to reach a full week.' },
+      { title: 'Record your first lecture', detail: 'Tap Record up top to capture a class live and get an instant transcript.' },
+      { title: 'Explore the DNA Replication sample', detail: 'See notes, flashcards, a quiz, and slides generated from a lecture.', courseId: 'course-bio', lectureId: 'lec-bio-1' },
+      { title: 'Start a study streak', detail: 'Study any lecture today to begin your streak — consistency is where it clicks.' },
     ],
   };
 }

@@ -77,6 +77,16 @@ export function Topbar() {
 
       <div className="flex items-center gap-2">
         <AnimatePresence>{isRecording && <RecordingPill />}</AnimatePresence>
+        {!isRecording && (
+          <button
+            type="button"
+            onClick={() => navigate('/record')}
+            className="focus-ring flex items-center gap-2 rounded-xl border border-rose/30 bg-rose/10 px-3 py-2 text-sm font-semibold text-rose transition-colors hover:border-rose/50 hover:bg-rose/20"
+          >
+            <span className="h-2.5 w-2.5 rounded-full bg-rose" />
+            Record
+          </button>
+        )}
         <button
           type="button"
           onClick={() => navigate('/search')}
