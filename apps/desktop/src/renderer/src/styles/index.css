@@ -1,0 +1,16 @@
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/sora';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens land with the design system in the UI phase. */
+:root {
+  color-scheme: light dark;
+}
+
+body {
+  font-family: 'Inter Variable', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}

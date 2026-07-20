@@ -1,0 +1,33 @@
+{
+  "name": "studdybuddy",
+  "version": "0.1.0",
+  "private": true,
+  "description": "StuddyBuddy — an AI lecture companion that turns live lectures into an organized, interactive knowledge base.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "setup": "node scripts/setup.mjs",
+    "dev": "pnpm --filter @studdybuddy/desktop dev",
+    "build": "pnpm --filter @studdybuddy/desktop build",
+    "package": "pnpm --filter @studdybuddy/desktop package",
+    "typecheck": "pnpm -r --no-bail typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.14.0",
+    "@vitest/coverage-v8": "^3.0.0",
+    "eslint": "^9.14.0",
+    "prettier": "^3.3.3",
+    "typescript": "^5.6.3",
+    "typescript-eslint": "^8.13.0",
+    "vitest": "^3.0.0"
+  }
+}

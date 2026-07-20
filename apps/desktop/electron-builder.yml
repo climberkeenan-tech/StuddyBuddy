@@ -1,0 +1,15 @@
+appId: com.studdybuddy.app
+productName: StuddyBuddy
+directories:
+  output: release
+files:
+  - out/**
+asar: true
+mac:
+  category: public.app-category.education
+  target: [dmg, zip]
+win:
+  target: [nsis]
+linux:
+  target: [AppImage, deb]
+  category: Education
