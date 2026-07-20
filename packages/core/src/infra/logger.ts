@@ -85,7 +85,6 @@ function safeJson(v: unknown): string {
 }
 
 export const consoleTransport: LogTransport = (r) => {
-  // eslint-disable-next-line no-console
   const fn = r.level === 'error' ? console.error : r.level === 'warn' ? console.warn : console.log;
   fn(formatRecord(r));
 };

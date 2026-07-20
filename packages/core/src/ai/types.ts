@@ -1,4 +1,5 @@
 import type { z } from 'zod';
+import type { StructuredGenerator } from './structured';
 
 /**
  * AI provider abstraction. Every LLM vendor (Anthropic, OpenAI, Gemini,
@@ -65,7 +66,7 @@ export interface AIFacade {
   /** "provider/model" string for stamping generated documents. */
   activeLabel(): string;
   chat(request: ChatRequest): Promise<ChatResult>;
-  generate: import('./structured').StructuredGenerator;
+  generate: StructuredGenerator;
 }
 
 /**

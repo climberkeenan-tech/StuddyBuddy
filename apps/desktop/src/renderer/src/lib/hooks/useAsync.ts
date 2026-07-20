@@ -42,7 +42,7 @@ export function useAsync<T>(fn: () => Promise<T>, deps: React.DependencyList): A
         }
       },
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   useEffect(() => {
