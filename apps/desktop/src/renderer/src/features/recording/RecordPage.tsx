@@ -12,7 +12,7 @@ import { useRecordingStore } from '@renderer/stores/recording-store';
 import { useAppStore } from '@renderer/stores/app-store';
 import { useToast } from '@renderer/components/toast/useToast';
 import { PageHeader } from '@renderer/components/layout';
-import { Badge, Button, GlassPanel, Input, Select } from '@renderer/components/ui';
+import { Badge, Button, GlassPanel, Input, Modal, Select } from '@renderer/components/ui';
 import { CourseIcon } from '@renderer/features/courses/CourseIcon';
 import { AudioMeter } from './AudioMeter';
 import { LiveTranscript } from './LiveTranscript';
@@ -98,6 +98,7 @@ export default function RecordPage() {
   const [session, setSession] = useState<Session | null>(null);
   const [starting, setStarting] = useState(false);
   const [stopping, setStopping] = useState(false);
+  const [webInfoOpen, setWebInfoOpen] = useState(false);
 
   const effectiveCourseId = paramCourseId ?? selectedCourseId;
   const activeCourse = useMemo(
@@ -131,6 +132,13 @@ export default function RecordPage() {
   const paused = status.state === 'paused';
 
   async function handleStart(forceDemo = false) {
+    // The browser preview has no real backend and a web page can't access a
+    // microphone, so it cannot transcribe real speech. Rather than fabricate a
+    // recording, explain honestly and point to the desktop app.
+    if (usingMockApi) {
+      setWebInfoOpen(true);
+      return;
+    }
     const courseId = effectiveCourseId;
     if (!courseId) {
       toast.error('Choose a class first', {
@@ -140,10 +148,7 @@ export default function RecordPage() {
     }
     setStarting(true);
 
-    // In the web preview there is no real backend and a browser tab can't reach
-    // the microphone, so go straight to a simulated capture instead of prompting
-    // for (and failing) mic access. The desktop app records real audio.
-    let demo = forceDemo || usingMockApi;
+    let demo = forceDemo;
     if (!demo && mic.supported) {
       const result = await mic.start();
       if (result === 'denied') {
@@ -213,8 +218,8 @@ export default function RecordPage() {
           <Sparkles size={16} className="mt-0.5 shrink-0 text-primary" />
           <p>
             <span className="font-semibold text-t1">Web preview.</span> A browser tab can&apos;t use
-            your microphone, so recording here is <span className="font-medium text-t1">simulated</span>{' '}
-            to show the live transcript → notes → quiz flow. The desktop app captures your real mic.
+            your microphone, so real recording and transcription live in the desktop app. You can
+            still explore every screen here.
           </p>
         </div>
       )}
@@ -376,6 +381,35 @@ export default function RecordPage() {
           </GlassPanel>
         </motion.div>
       </motion.div>
+
+      <Modal
+        open={webInfoOpen}
+        onClose={() => setWebInfoOpen(false)}
+        title="Real recording lives in the desktop app"
+        description="This web preview can't hear your microphone."
+        footer={
+          <Button onClick={() => setWebInfoOpen(false)}>Got it</Button>
+        }
+      >
+        <div className="space-y-3 text-sm leading-relaxed text-t2">
+          <p>
+            For security, a web page — especially inside another app — isn&apos;t allowed to use
+            your microphone, so it can&apos;t transcribe what you say. To keep this preview honest,
+            it won&apos;t invent a recording for you.
+          </p>
+          <p>
+            To capture your <span className="font-medium text-t1">real</span> lectures and get a real
+            transcript, run the free desktop app. Turn on a transcription engine in{' '}
+            <span className="font-medium text-t1">Settings → Transcription</span> — add an OpenAI API
+            key for cloud Whisper, or point it at a local whisper.cpp model to stay fully offline.
+          </p>
+          <p className="text-t3">
+            Meanwhile, you can explore every screen here, and open a class&apos;s{' '}
+            <span className="font-medium text-t2">Import demo lecture</span> to see a finished,
+            clearly-labelled sample.
+          </p>
+        </div>
+      </Modal>
     </div>
   );
 }
