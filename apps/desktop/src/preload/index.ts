@@ -15,13 +15,22 @@ import {
 
 type EventName = keyof IpcEventMap;
 
+type Envelope =
+  | { ok: true; value: unknown }
+  | { ok: false; error: { code: string; message: string; retryable?: boolean } };
+
 function buildApi(): IpcApi {
   const api = {} as Record<string, Record<string, (...args: unknown[]) => Promise<unknown>>>;
   for (const [group, methods] of Object.entries(IPC_SURFACE)) {
     api[group] = {};
     for (const method of methods) {
       const channel = `${IPC_INVOKE_PREFIX}${group}.${method}`;
-      api[group][method] = (...args: unknown[]) => ipcRenderer.invoke(channel, ...args);
+      api[group][method] = async (...args: unknown[]) => {
+        const envelope = (await ipcRenderer.invoke(channel, ...args)) as Envelope;
+        if (envelope.ok) return envelope.value;
+        // Rehydrate the structured AppError so the UI can branch on .code.
+        throw Object.assign(new Error(envelope.error.message), envelope.error);
+      };
     }
   }
   return api as unknown as IpcApi;
