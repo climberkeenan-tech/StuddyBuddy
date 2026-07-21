@@ -38,8 +38,12 @@ command -v pnpm >/dev/null 2>&1 || bail "pnpm isn't installed or isn't on your P
 
 BRANCH="claude/ai-lecture-companion-app-e9hnk1"
 
-echo "→ Getting the latest version…"
-git pull origin "$BRANCH" || bail "git pull failed (check your internet)."
+echo "→ Getting the latest working version…"
+# Sync exactly to the tested version on GitHub, no matter what state this
+# folder is in (this avoids merge conflicts from earlier edits). This only
+# touches StuddyBuddy's own files; your recordings/notes live elsewhere.
+git fetch origin "$BRANCH" || bail "couldn't reach GitHub (check your internet)."
+git reset --hard "origin/$BRANCH" || bail "couldn't sync to the latest version."
 
 echo ""
 echo "→ Installing (first time takes a minute)…"
