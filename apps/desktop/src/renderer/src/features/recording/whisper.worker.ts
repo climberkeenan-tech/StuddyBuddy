@@ -53,6 +53,10 @@ let transcriberPromise: Promise<Transcriber> | null = null;
 function getTranscriber(): Promise<Transcriber> {
   if (!transcriberPromise) {
     transcriberPromise = pipeline('automatic-speech-recognition', MODEL_ID, {
+      // Quantized weights: ~4× smaller download and faster on WASM than fp32,
+      // with no meaningful accuracy loss for lecture speech. Verified end-to-end
+      // against a known speech clip.
+      dtype: 'q8',
       progress_callback: (data: unknown) => ctx.postMessage({ type: 'progress', data }),
     }) as unknown as Promise<Transcriber>;
   }
