@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { MicOff, Pause, Play, Radio, Sparkles } from 'lucide-react';
+import { AlertTriangle, MicOff, Pause, Play, Radio, Sparkles } from 'lucide-react';
 import type { RecordingStatus, TranscriptSegment } from '@studdybuddy/shared';
 import { api, usingMockApi } from '@renderer/lib/api';
 import { useAsync, useIpcEvent, usePageTitle } from '@renderer/lib/hooks';
@@ -86,8 +86,14 @@ export default function RecordPage() {
   const stop = useRecordingStore((s) => s.stop);
 
   const storeCourses = useAppStore((s) => s.courses);
+  const transcriptionProvider = useAppStore((s) => s.settings.transcriptionProvider);
   const { data: fetchedCourses } = useAsync(() => api.courses.list(), []);
   const courses = storeCourses.length > 0 ? storeCourses : (fetchedCourses ?? []);
+
+  // In the real desktop app the default "simulated" engine replays sample text
+  // instead of transcribing the microphone. Surface that loudly so a recording
+  // never silently comes back as canned content the user never said.
+  const demoVoice = !usingMockApi && transcriptionProvider === 'simulated';
 
   const mic = useMicCapture();
 
@@ -224,6 +230,27 @@ export default function RecordPage() {
         </div>
       )}
 
+      {demoVoice && !active && (
+        <div className="flex flex-col gap-3 rounded-panel border border-amber/40 bg-amber/10 px-4 py-3 text-sm text-t2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber" />
+            <p>
+              <span className="font-semibold text-t1">You&apos;re in Demo Voice mode.</span>{' '}
+              Recording won&apos;t transcribe what you actually say — it fills in sample text so you
+              can try the app. Turn on a real engine to transcribe your own lectures.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="secondary"
+            className="shrink-0"
+            onClick={() => nav('/settings?tab=transcription')}
+          >
+            Set up real transcription
+          </Button>
+        </div>
+      )}
+
       <motion.div
         className="grid gap-6 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]"
         variants={staggerChildren}
@@ -265,6 +292,12 @@ export default function RecordPage() {
                     {segmentCount} {segmentCount === 1 ? 'segment' : 'segments'} captured
                     {session?.demo && ' · demo mode'}
                   </p>
+                  {demoVoice && (
+                    <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-amber/15 px-2.5 py-0.5 text-xs font-medium text-amber">
+                      <AlertTriangle size={12} />
+                      Demo voice — sample text, not your words
+                    </span>
+                  )}
                 </div>
 
                 <AudioMeter level={status.audioLevel} active={!paused} className="w-full" />
@@ -295,7 +328,9 @@ export default function RecordPage() {
                   </Button>
                 </div>
                 <p className="text-center text-xs text-t3">
-                  We&apos;ll transcribe everything and build your study kit automatically.
+                  {demoVoice
+                    ? 'Demo voice is on, so the transcript will be sample text — switch engines in Settings → Transcription for your real words.'
+                    : "We'll transcribe everything and build your study kit automatically."}
                 </p>
               </div>
             ) : (

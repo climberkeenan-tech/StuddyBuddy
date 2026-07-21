@@ -100,13 +100,14 @@ const TRANSCRIPTION_OPTIONS: {
 }[] = [
   {
     value: 'simulated',
-    label: 'Simulated',
-    description: 'Deterministic demo transcription. Runs anywhere, no setup.',
+    label: 'Demo voice (not real)',
+    description:
+      'Sample text only — does NOT transcribe your microphone. For trying the app with no setup.',
   },
   {
     value: 'openai-whisper',
     label: 'OpenAI Whisper',
-    description: 'Cloud speech-to-text with excellent accuracy. Requires an OpenAI key.',
+    description: 'Real speech-to-text with excellent accuracy. Transcribes what you actually say. Requires an OpenAI key.',
   },
   {
     value: 'whisper-cpp',

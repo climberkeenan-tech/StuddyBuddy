@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'react-router-dom';
 import { Cpu, Database, Info, Mic, Palette, Puzzle, Sparkles } from 'lucide-react';
 import { usePageTitle } from '@renderer/lib/hooks';
 import { PageHeader } from '@renderer/components/layout';
@@ -35,6 +36,13 @@ const TAB_ITEMS: { value: SectionKey; label: string; icon: React.ReactNode }[] =
   { value: 'about', label: 'About', icon: <Info size={15} /> },
 ];
 
+const SECTION_KEYS = TAB_ITEMS.map((t) => t.value);
+
+/** Read the initial settings tab from a `?tab=` deep link (e.g. from the record screen). */
+function initialSection(param: string | null): SectionKey {
+  return SECTION_KEYS.includes(param as SectionKey) ? (param as SectionKey) : 'providers';
+}
+
 /**
  * The Settings page. A tabbed control center for AI providers, transcription,
  * appearance, study behavior, data & backup, plugins, and app info. Every change
@@ -42,7 +50,8 @@ const TAB_ITEMS: { value: SectionKey; label: string; icon: React.ReactNode }[] =
  */
 export default function SettingsPage(): JSX.Element {
   usePageTitle('Settings', 'Providers, appearance, data, and more.');
-  const [section, setSection] = useState<SectionKey>('providers');
+  const [params] = useSearchParams();
+  const [section, setSection] = useState<SectionKey>(() => initialSection(params.get('tab')));
 
   return (
     <div className="space-y-6">
