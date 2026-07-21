@@ -49,6 +49,15 @@ echo ""
 echo "→ Installing (first time takes a minute)…"
 pnpm install || bail "pnpm install failed."
 
+# pnpm skips Electron's own download step by default, which can leave the app
+# unable to launch. Make sure the Electron runtime binary is present. Non-fatal:
+# if it's already installed this is a quick no-op.
+echo ""
+echo "→ Preparing the app runtime (first run only)…"
+node node_modules/electron/install.js >/dev/null 2>&1 \
+  || pnpm rebuild electron >/dev/null 2>&1 \
+  || echo "   (runtime prep skipped — the app will fetch it on first launch)"
+
 echo ""
 echo "→ Launching StuddyBuddy. A new app window will open."
 echo "   First recording downloads a small speech model once — wait"
