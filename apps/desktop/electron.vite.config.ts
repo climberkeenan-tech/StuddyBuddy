@@ -33,5 +33,9 @@ export default defineConfig({
   renderer: {
     resolve: { alias: workspaceAliases },
     plugins: [react()],
+    // Transformers.js ships its own ESM + wasm; let Vite serve it as-is and
+    // build the on-device Whisper worker as an ES module.
+    optimizeDeps: { exclude: ['@huggingface/transformers'] },
+    worker: { format: 'es' },
   },
 });

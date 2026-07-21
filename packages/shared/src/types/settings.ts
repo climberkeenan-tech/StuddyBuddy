@@ -7,7 +7,11 @@ export type ThemeMode = 'system' | 'light' | 'dark';
 
 export type AIProviderId = 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'mock';
 
-export type TranscriptionProviderId = 'openai-whisper' | 'whisper-cpp' | 'simulated';
+export type TranscriptionProviderId =
+  | 'browser-whisper'
+  | 'openai-whisper'
+  | 'whisper-cpp'
+  | 'simulated';
 
 export type EmbeddingProviderId = 'openai' | 'ollama' | 'local-hash';
 
@@ -46,7 +50,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   reduceMotion: 'system',
   aiProvider: 'mock',
   aiProviderSettings: {},
-  transcriptionProvider: 'simulated',
+  // On-device Whisper: real speech-to-text that runs locally with no API key.
+  transcriptionProvider: 'browser-whisper',
   embeddingProvider: 'local-hash',
   keepAudio: true,
   autoGenerateStudyKit: true,

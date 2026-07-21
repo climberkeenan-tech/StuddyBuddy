@@ -13,7 +13,7 @@ import type { EventBus } from './event-bus';
  */
 export interface CoreEvents extends Record<string, unknown> {
   'recording:status': RecordingStatus;
-  'transcript:segments': { lectureId: string; segments: TranscriptSegment[] };
+  'transcript:segments': { lectureId: string; segments: TranscriptSegment[]; replace?: boolean };
   'transcript:updated': { lectureId: string };
   'job:progress': JobProgress;
   'lecture:ready': { lectureId: string };

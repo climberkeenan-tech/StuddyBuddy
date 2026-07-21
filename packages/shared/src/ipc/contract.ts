@@ -54,6 +54,13 @@ export interface IpcApi {
     start(courseId: string, title?: string): Promise<{ lectureId: string }>;
     /** Push an audio chunk captured by the renderer (webm/opus bytes). */
     pushAudioChunk(chunk: ArrayBuffer, mimeType: string): Promise<void>;
+    /**
+     * Push a full transcript produced on the renderer side (on-device Whisper).
+     * The list is authoritative and replaces any prior segments for the active
+     * lecture — used by the local browser Whisper engine, which recognizes audio
+     * in the renderer rather than the main process.
+     */
+    pushSegments(segments: TranscriptSegment[]): Promise<void>;
     /** Push a live level sample (0..1) for the meter + pause detection. */
     pushAudioLevel(level: number): Promise<void>;
     pause(): Promise<void>;
@@ -187,8 +194,13 @@ export interface IpcApi {
 export interface IpcEventMap {
   /** Live recording status ticks (~2/s while recording). */
   'recording:status': RecordingStatus;
-  /** New or updated transcript segments during live transcription. */
-  'transcript:segments': { lectureId: string; segments: TranscriptSegment[] };
+  /**
+   * New or updated transcript segments during live transcription. When
+   * `replace` is true the list is authoritative and supersedes everything shown
+   * so far (Whisper engines re-transcribe the whole clip); otherwise segments
+   * are appended.
+   */
+  'transcript:segments': { lectureId: string; segments: TranscriptSegment[]; replace?: boolean };
   /** Structure updates (paragraphs/sections/topics) during or after recording. */
   'transcript:updated': { lectureId: string };
   /** Long-running job progress (analysis, study kit, exports). */
@@ -223,6 +235,7 @@ export const IPC_SURFACE: Record<IpcGroup, string[]> = {
   recording: [
     'start',
     'pushAudioChunk',
+    'pushSegments',
     'pushAudioLevel',
     'pause',
     'resume',

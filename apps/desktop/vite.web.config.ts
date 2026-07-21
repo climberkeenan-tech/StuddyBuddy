@@ -16,6 +16,12 @@ export default defineConfig({
     alias: {
       '@studdybuddy/shared': resolve(__dirname, '../../packages/shared/src/index.ts'),
       '@renderer': resolve(__dirname, 'src/renderer/src'),
+      // On-device Whisper is desktop-only; keep the heavy ML library out of the
+      // shareable web demo (the worker there is never executed).
+      '@huggingface/transformers': resolve(
+        __dirname,
+        'src/renderer/src/lib/transformers-web-stub.ts',
+      ),
     },
   },
   plugins: [react()],

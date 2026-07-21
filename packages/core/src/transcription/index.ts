@@ -5,6 +5,7 @@
 export * from './types';
 export * from './stages/index';
 export { buildTranscript, type BuildTranscriptOptions } from './build-transcript';
+export { BrowserWhisperTranscription } from './providers/browser-whisper';
 export {
   SimulatedTranscriptionProvider,
   type SimulatedProviderOptions,

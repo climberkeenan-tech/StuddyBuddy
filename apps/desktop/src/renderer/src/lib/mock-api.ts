@@ -650,6 +650,9 @@ export function createMockApi(emit: EmitFn): IpcApi {
       async pushAudioChunk() {
         /* discarded in the mock */
       },
+      async pushSegments() {
+        /* on-device Whisper is desktop-only; the web mock has no real audio */
+      },
       async pushAudioLevel(level) {
         recording = { ...recording, audioLevel: level };
       },

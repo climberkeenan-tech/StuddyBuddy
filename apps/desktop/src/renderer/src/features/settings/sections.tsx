@@ -99,6 +99,12 @@ const TRANSCRIPTION_OPTIONS: {
   description: string;
 }[] = [
   {
+    value: 'browser-whisper',
+    label: 'On-device Whisper (recommended)',
+    description:
+      'Real speech-to-text that runs on your device — transcribes your microphone with no API key and no cloud. Downloads a small model once, then works offline.',
+  },
+  {
     value: 'simulated',
     label: 'Demo voice (not real)',
     description:
@@ -136,7 +142,7 @@ export function TranscriptionSection(): JSX.Element {
       description="Choose how your lectures are turned into text."
     >
       <motion.div
-        className="grid gap-3 sm:grid-cols-3"
+        className="grid gap-3 sm:grid-cols-2"
         variants={staggerChildren}
         initial="hidden"
         animate="show"

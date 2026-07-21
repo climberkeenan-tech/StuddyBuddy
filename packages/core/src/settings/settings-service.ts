@@ -27,6 +27,12 @@ export class SettingsService {
       const raw = await fs.readFile(this.filePath, 'utf8');
       const parsed = JSON.parse(raw) as Partial<AppSettings>;
       this.settings = { ...DEFAULT_SETTINGS, ...parsed };
+      // Migration: the old silent default was the "demo voice" engine, which
+      // never transcribes real audio. Anyone still on it is upgraded to the
+      // real, no-setup on-device Whisper engine so recording just works.
+      if (this.settings.transcriptionProvider === 'simulated') {
+        this.settings.transcriptionProvider = 'browser-whisper';
+      }
     } catch (e) {
       if ((e as NodeJS.ErrnoException).code !== 'ENOENT') {
         this.logger.warn('settings file unreadable, using defaults', {

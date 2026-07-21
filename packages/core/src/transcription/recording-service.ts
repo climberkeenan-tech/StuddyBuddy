@@ -193,6 +193,17 @@ export class RecordingService {
     if (this.session) await this.session.push({ data: bytes, mimeType, atMs });
   }
 
+  /**
+   * Inject a full transcript recognized in the renderer (on-device Whisper).
+   * The list is authoritative and replaces any prior segments (same contract as
+   * the cloud Whisper provider). Ignored unless a session is live so late pushes
+   * after stop can't resurrect state.
+   */
+  ingestSegments(segments: TranscriptSegment[]): void {
+    if (this.state !== 'recording' && this.state !== 'paused') return;
+    this.enqueue({ segments, final: true });
+  }
+
   /** Update the rolling input level (0..1) shown on the meter. */
   pushAudioLevel(level: number): void {
     this.audioLevel = Math.max(0, Math.min(1, level));
@@ -335,12 +346,16 @@ export class RecordingService {
     if (this.state === 'idle' || !this.lectureId) return;
     if (update.segments.length === 0) return;
 
-    if (this.engineId === 'openai-whisper') {
+    if (this.engineId === 'openai-whisper' || this.engineId === 'browser-whisper') {
       // Whisper re-emits the full authoritative list every round: replace.
       const assigned = update.segments.map((s, i) => ({ ...s, id: newId(), index: i }));
       const processed = await runStages(assigned, this.liveStages);
       this.segments = processed.map((s, i) => ({ ...s, index: i }));
-      this.bus.emit('transcript:segments', { lectureId: this.lectureId, segments: this.segments });
+      this.bus.emit('transcript:segments', {
+        lectureId: this.lectureId,
+        segments: this.segments,
+        replace: true,
+      });
     } else {
       const base = this.segments.length;
       const assigned = update.segments.map((s, i) => ({ ...s, id: newId(), index: base + i }));

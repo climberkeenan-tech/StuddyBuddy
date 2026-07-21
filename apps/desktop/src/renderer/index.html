@@ -2,9 +2,15 @@
 <html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
+    <!--
+      connect-src / script-src are widened for on-device Whisper: the model
+      streams once from the Hugging Face hub and the ONNX Runtime WebAssembly
+      backend needs wasm-unsafe-eval + blob workers. Everything then runs and
+      caches locally — no audio ever leaves the device.
+    -->
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' blob:"
+      content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' blob: data: https://huggingface.co https://*.huggingface.co https://cdn.jsdelivr.net https://*.hf.co"
     />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>StuddyBuddy</title>

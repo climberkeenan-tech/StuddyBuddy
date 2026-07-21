@@ -51,6 +51,8 @@ export function useMicCapture() {
   const audioCtxRef = useRef<AudioContext | null>(null);
   const rafRef = useRef<number | null>(null);
   const mimeRef = useRef<string>('audio/webm');
+  /** Every webm chunk so far, retained so on-device Whisper can transcribe it. */
+  const chunksRef = useRef<Blob[]>([]);
 
   const teardown = useCallback(() => {
     if (rafRef.current !== null && typeof cancelAnimationFrame === 'function') {
@@ -135,11 +137,16 @@ export function useMicCapture() {
 
     const mime = preferredMimeType();
     mimeRef.current = mime ?? 'audio/webm';
+    chunksRef.current = [];
     try {
       const recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
       recorder.ondataavailable = (event: BlobEvent) => {
         const blob = event.data;
         if (!blob || blob.size === 0) return;
+        // Retain for on-device transcription (concatenated chunks stay a
+        // decodable webm stream), and forward to the backend for optional
+        // audio persistence.
+        chunksRef.current.push(blob);
         void blob
           .arrayBuffer()
           .then((buffer) => api.recording.pushAudioChunk(buffer, blob.type || mimeRef.current))
@@ -180,6 +187,41 @@ export function useMicCapture() {
     }
   }, []);
 
+  /** A decodable webm Blob of everything captured so far (null if nothing yet). */
+  const snapshotBlob = useCallback((): Blob | null => {
+    if (chunksRef.current.length === 0) return null;
+    return new Blob(chunksRef.current, { type: mimeRef.current });
+  }, []);
+
+  /**
+   * Stop the recorder, wait for its final chunk, release the device, and return
+   * the complete recording as a Blob (null if nothing was captured). Used by the
+   * on-device Whisper path to transcribe the full audio on stop.
+   */
+  const finishRecording = useCallback((): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      const rec = recorderRef.current;
+      const finalize = () => {
+        const blob = chunksRef.current.length
+          ? new Blob(chunksRef.current, { type: mimeRef.current })
+          : null;
+        teardown();
+        if (supported) setState('idle');
+        resolve(blob);
+      };
+      if (!rec || rec.state === 'inactive') {
+        finalize();
+        return;
+      }
+      rec.addEventListener('stop', finalize, { once: true });
+      try {
+        rec.stop();
+      } catch {
+        finalize();
+      }
+    });
+  }, [teardown, supported]);
+
   /** Stop capture and release the microphone. */
   const stop = useCallback(() => {
     teardown();
@@ -189,5 +231,5 @@ export function useMicCapture() {
   // Always release the device if the component unmounts mid-recording.
   useEffect(() => () => teardown(), [teardown]);
 
-  return { state, supported, start, pause, resume, stop };
+  return { state, supported, start, pause, resume, stop, snapshotBlob, finishRecording };
 }

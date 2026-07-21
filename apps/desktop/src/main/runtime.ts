@@ -407,6 +407,7 @@ export async function createRuntime(options: RuntimeOptions): Promise<Runtime> {
       start: (courseId, title) => recording.start(courseId, title),
       pushAudioChunk: (chunk, mimeType) =>
         recording.pushAudioChunk(new Uint8Array(chunk), mimeType),
+      pushSegments: async (segments) => recording.ingestSegments(segments),
       pushAudioLevel: async (level) => recording.pushAudioLevel(level),
       pause: async () => recording.pause(),
       resume: async () => recording.resume(),
