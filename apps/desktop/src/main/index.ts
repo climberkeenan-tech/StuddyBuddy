@@ -47,7 +47,7 @@ async function createWindow(): Promise<BrowserWindow> {
     backgroundColor: '#0b0d16',
     title: 'StuddyBuddy',
     webPreferences: {
-      preload: path.join(import.meta.dirname, '../preload/index.js'),
+      preload: path.join(import.meta.dirname, '../preload/index.cjs'),
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false,
