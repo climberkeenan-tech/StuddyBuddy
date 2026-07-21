@@ -1,9 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TranscriptSegment } from '@studdybuddy/shared';
-import { newId } from '@studdybuddy/shared';
-
-/** Target sample rate Whisper expects. */
-const TARGET_SAMPLE_RATE = 16000;
+import {
+  TARGET_SAMPLE_RATE,
+  downmixToMono,
+  resampleTo16k,
+  toSegments,
+  type AsrChunk,
+  type WhisperResult,
+} from './whisper-audio';
 
 export type WhisperPhase = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -14,45 +18,10 @@ export interface BrowserWhisperState {
   error: string | null;
 }
 
-interface AsrChunk {
-  timestamp: [number, number | null];
-  text: string;
-}
-interface WorkerResult {
-  text: string;
-  chunks: AsrChunk[];
-}
+type WorkerResult = WhisperResult;
 
 interface AudioContextCtor {
   new (options?: { sampleRate?: number }): AudioContext;
-}
-
-/** Average all channels down to a single mono Float32 track. */
-function downmixToMono(buffer: AudioBuffer): Float32Array {
-  const { numberOfChannels, length } = buffer;
-  if (numberOfChannels === 1) return buffer.getChannelData(0).slice();
-  const mono = new Float32Array(length);
-  for (let ch = 0; ch < numberOfChannels; ch += 1) {
-    const data = buffer.getChannelData(ch);
-    for (let i = 0; i < length; i += 1) mono[i] = (mono[i] ?? 0) + (data[i] ?? 0) / numberOfChannels;
-  }
-  return mono;
-}
-
-/** Cheap linear resample to 16 kHz (used only if decode didn't already). */
-function resampleTo16k(samples: Float32Array, sourceRate: number): Float32Array {
-  if (sourceRate === TARGET_SAMPLE_RATE) return samples;
-  const ratio = sourceRate / TARGET_SAMPLE_RATE;
-  const outLength = Math.floor(samples.length / ratio);
-  const out = new Float32Array(outLength);
-  for (let i = 0; i < outLength; i += 1) {
-    const srcIndex = i * ratio;
-    const lo = Math.floor(srcIndex);
-    const hi = Math.min(lo + 1, samples.length - 1);
-    const frac = srcIndex - lo;
-    out[i] = samples[lo]! * (1 - frac) + samples[hi]! * frac;
-  }
-  return out;
 }
 
 /** Decode a recorded audio Blob into 16 kHz mono Float32 samples for Whisper. */
@@ -72,29 +41,6 @@ async function decodeToMono16k(blob: Blob): Promise<Float32Array> {
   } finally {
     void audioCtx.close().catch(() => {});
   }
-}
-
-/** Map worker output to transcript segments (ids/indexes are re-assigned server-side). */
-function toSegments(result: WorkerResult): TranscriptSegment[] {
-  const chunks = result.chunks.filter((c) => c.text.trim().length > 0);
-  if (chunks.length === 0) {
-    const text = result.text.trim();
-    return text
-      ? [{ id: newId(), index: 0, startMs: 0, endMs: 0, text, kind: 'speech' }]
-      : [];
-  }
-  return chunks.map((chunk, index) => {
-    const start = chunk.timestamp[0] ?? 0;
-    const end = chunk.timestamp[1] ?? start;
-    return {
-      id: newId(),
-      index,
-      startMs: Math.round(start * 1000),
-      endMs: Math.round(end * 1000),
-      text: chunk.text.trim(),
-      kind: 'speech' as const,
-    };
-  });
 }
 
 /**
@@ -211,14 +157,18 @@ export function useBrowserWhisper(enabled: boolean) {
     [ensureLoaded, ensureWorker],
   );
 
+  // Capture the ref containers once so cleanup operates on the same instances
+  // (they are created with the hook and never reassigned).
+  const pendingJobs = pending.current;
+  const waiters = loadWaiters;
   useEffect(() => {
     return () => {
       workerRef.current?.terminate();
       workerRef.current = null;
-      pending.current.clear();
-      loadWaiters.current = [];
+      pendingJobs.clear();
+      waiters.current = [];
     };
-  }, []);
+  }, [pendingJobs, waiters]);
 
   return { state, ensureLoaded, transcribe };
 }

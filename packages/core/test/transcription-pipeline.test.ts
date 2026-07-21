@@ -14,6 +14,7 @@ import { questionsStage } from '../src/transcription/stages/questions';
 import { runStages } from '../src/transcription/stages/run-stages';
 import { buildTranscript } from '../src/transcription/build-transcript';
 import { SimulatedTranscriptionProvider } from '../src/transcription/providers/simulated';
+import { BrowserWhisperTranscription } from '../src/transcription/providers/browser-whisper';
 import type { RecordingProviderRegistry } from '../src/transcription/registry';
 import { RecordingService } from '../src/transcription/recording-service';
 import { importDemoLecture } from '../src/demo/import-demo';
@@ -294,6 +295,175 @@ describe('RecordingService', () => {
     await service.stop();
     const lecture = await repos.lectures.get(lectureId);
     expect(lecture?.status).toBe('failed');
+  });
+});
+
+describe('RecordingService · on-device Whisper ingest', () => {
+  let dir: string;
+  let settings: SettingsService;
+  let repos: Repositories;
+  let bus: CoreEventBus;
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sb-rec-bw-'));
+    const logger = new LogManager().getLogger('test');
+    settings = new SettingsService(dir, logger);
+    await settings.init();
+    await settings.update({ keepAudio: false, transcriptionProvider: 'browser-whisper' });
+    repos = createFakeRepos();
+    bus = new EventBus<CoreEvents>();
+  });
+
+  afterEach(async () => {
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  function makeBrowserService(): RecordingService {
+    const registry: RecordingProviderRegistry = {
+      getActive: async () => new BrowserWhisperTranscription(),
+    };
+    return new RecordingService({
+      repos,
+      registry,
+      settings,
+      bus,
+      logger: new LogManager().getLogger('rec'),
+      dataDir: dir,
+      onLectureFinalized: async () => {},
+    });
+  }
+
+  it("persists the user's real ingested words, not demo content", async () => {
+    const service = makeBrowserService();
+    const emitted: { segments: TranscriptSegment[]; replace?: boolean }[] = [];
+    bus.on('transcript:segments', (e) => emitted.push({ segments: e.segments, replace: e.replace }));
+
+    const { lectureId } = await service.start('course-1', 'My real lecture');
+
+    // The renderer (on-device Whisper) pushes the recognized transcript.
+    service.ingestSegments([
+      mkSeg(0, 2000, 'Photosynthesis converts light energy into chemical energy.'),
+      mkSeg(2000, 4000, 'Chlorophyll absorbs mostly red and blue wavelengths.'),
+    ]);
+
+    const { lectureId: stopped } = await service.stop();
+    expect(stopped).toBe(lectureId);
+
+    // Emissions for this engine are full-replacement.
+    expect(emitted.length).toBeGreaterThanOrEqual(1);
+    expect(emitted.every((e) => e.replace === true)).toBe(true);
+
+    const transcript = await repos.transcripts.getByLecture(lectureId);
+    const text = transcript!.segments.map((s) => s.text).join(' ');
+    expect(text).toContain('Photosynthesis converts light energy');
+    expect(text).toContain('Chlorophyll absorbs');
+    // The bundled demo (DNA/biology) must not leak in.
+    expect(text).not.toContain('deoxyribonucleic');
+    expect(transcript!.engine).toBe('browser-whisper');
+  });
+
+  it('replaces the transcript wholesale on each ingest (no accumulation)', async () => {
+    const service = makeBrowserService();
+    const { lectureId } = await service.start('course-1');
+
+    service.ingestSegments([mkSeg(0, 1500, 'First rough partial guess.')]);
+    service.ingestSegments([
+      mkSeg(0, 1500, 'First corrected sentence.'),
+      mkSeg(1500, 3000, 'Second corrected sentence.'),
+    ]);
+
+    await service.stop();
+
+    const transcript = await repos.transcripts.getByLecture(lectureId);
+    const text = transcript!.segments.map((s) => s.text).join(' ');
+    expect(text).toContain('First corrected sentence');
+    expect(text).toContain('Second corrected sentence');
+    expect(text).not.toContain('rough partial guess');
+    // Indices are contiguous from zero (a clean replacement, not an append).
+    expect(transcript!.segments.map((s) => s.index)).toEqual(
+      transcript!.segments.map((_, i) => i),
+    );
+  });
+
+  it('ignores ingested segments when no session is active', async () => {
+    const service = makeBrowserService();
+    // Before start.
+    expect(() => service.ingestSegments([mkSeg(0, 1000, 'stray')])).not.toThrow();
+
+    const { lectureId } = await service.start('course-1');
+    service.ingestSegments([mkSeg(0, 1000, 'Real content while recording.')]);
+    await service.stop();
+
+    // After stop — must be ignored (state is idle again).
+    service.ingestSegments([mkSeg(0, 1000, 'Too late, should be dropped.')]);
+
+    const transcript = await repos.transcripts.getByLecture(lectureId);
+    const text = transcript!.segments.map((s) => s.text).join(' ');
+    expect(text).toContain('Real content while recording');
+    expect(text).not.toContain('Too late');
+  });
+});
+
+describe('BrowserWhisperTranscription', () => {
+  it('is always available and needs no API key', async () => {
+    const provider = new BrowserWhisperTranscription();
+    expect(provider.info.id).toBe('browser-whisper');
+    expect(provider.info.requiresApiKey).toBe(false);
+    expect(provider.info.local).toBe(true);
+    expect(await provider.isConfigured()).toBe(true);
+  });
+
+  it('opens a passive session (recognition happens in the renderer)', async () => {
+    const provider = new BrowserWhisperTranscription();
+    const onSegments = vi.fn();
+    const onError = vi.fn();
+    const session = await provider.startSession({ language: 'en', onSegments, onError });
+
+    await session.push({ data: new Uint8Array([1, 2, 3]), mimeType: 'audio/webm', atMs: 0 });
+    await expect(session.finish()).resolves.toEqual([]);
+    await session.abort();
+
+    // The main-process session never fabricates segments or errors.
+    expect(onSegments).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
+});
+
+describe('SettingsService transcription migration', () => {
+  let dir: string;
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), 'sb-settings-'));
+  });
+  afterEach(async () => {
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  async function initWith(provider: string): Promise<SettingsService> {
+    await fs.writeFile(
+      path.join(dir, 'settings.json'),
+      JSON.stringify({ transcriptionProvider: provider }),
+      'utf8',
+    );
+    const settings = new SettingsService(dir, new LogManager().getLogger('test'));
+    await settings.init();
+    return settings;
+  }
+
+  it('upgrades a stored "simulated" default to on-device Whisper', async () => {
+    const settings = await initWith('simulated');
+    expect(settings.get().transcriptionProvider).toBe('browser-whisper');
+  });
+
+  it('leaves a deliberate real-engine choice untouched', async () => {
+    const settings = await initWith('openai-whisper');
+    expect(settings.get().transcriptionProvider).toBe('openai-whisper');
+  });
+
+  it('defaults fresh installs to on-device Whisper', async () => {
+    const settings = new SettingsService(dir, new LogManager().getLogger('test'));
+    await settings.init();
+    expect(settings.get().transcriptionProvider).toBe('browser-whisper');
   });
 });
 
