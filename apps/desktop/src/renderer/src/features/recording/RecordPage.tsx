@@ -88,12 +88,24 @@ export default function RecordPage() {
   const storeCourses = useAppStore((s) => s.courses);
   const transcriptionProvider = useAppStore((s) => s.settings.transcriptionProvider);
   const { data: fetchedCourses } = useAsync(() => api.courses.list(), []);
+  const { data: providerList } = useAsync(() => api.providers.list(), []);
   const courses = storeCourses.length > 0 ? storeCourses : (fetchedCourses ?? []);
 
   // In the real desktop app the default "simulated" engine replays sample text
-  // instead of transcribing the microphone. Surface that loudly so a recording
-  // never silently comes back as canned content the user never said.
+  // instead of transcribing the microphone. Just as bad: picking a real engine
+  // (Whisper) but never finishing its setup silently *falls back* to that same
+  // demo voice. Detect both so a recording never quietly comes back as canned
+  // content the user never said.
   const demoVoice = !usingMockApi && transcriptionProvider === 'simulated';
+  const selectedRealUnconfigured = useMemo(() => {
+    if (usingMockApi || transcriptionProvider === 'simulated' || !providerList) return false;
+    const descriptor = providerList.find(
+      (p) => p.kind === 'transcription' && p.id === transcriptionProvider,
+    );
+    return !!descriptor && !descriptor.available;
+  }, [usingMockApi, transcriptionProvider, providerList]);
+  // Either way, the transcript will be fake sample text rather than real speech.
+  const willFakeTranscript = demoVoice || selectedRealUnconfigured;
 
   const mic = useMicCapture();
 
@@ -230,23 +242,39 @@ export default function RecordPage() {
         </div>
       )}
 
-      {demoVoice && !active && (
+      {willFakeTranscript && !active && (
         <div className="flex flex-col gap-3 rounded-panel border border-amber/40 bg-amber/10 px-4 py-3 text-sm text-t2 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-start gap-3">
             <AlertTriangle size={16} className="mt-0.5 shrink-0 text-amber" />
-            <p>
-              <span className="font-semibold text-t1">You&apos;re in Demo Voice mode.</span>{' '}
-              Recording won&apos;t transcribe what you actually say — it fills in sample text so you
-              can try the app. Turn on a real engine to transcribe your own lectures.
-            </p>
+            {demoVoice ? (
+              <p>
+                <span className="font-semibold text-t1">You&apos;re in Demo Voice mode.</span>{' '}
+                Recording won&apos;t transcribe what you actually say — it fills in sample text so
+                you can try the app. Turn on a real engine to transcribe your own lectures.
+              </p>
+            ) : (
+              <p>
+                <span className="font-semibold text-t1">
+                  Your transcription engine isn&apos;t set up yet.
+                </span>{' '}
+                You picked a real engine, but it still needs an API key (or a model path), so
+                recording will fall back to demo sample text until you finish setup.
+              </p>
+            )}
           </div>
           <Button
             size="sm"
             variant="secondary"
             className="shrink-0"
-            onClick={() => nav('/settings?tab=transcription')}
+            onClick={() =>
+              nav(
+                selectedRealUnconfigured
+                  ? '/settings?tab=providers'
+                  : '/settings?tab=transcription',
+              )
+            }
           >
-            Set up real transcription
+            {selectedRealUnconfigured ? 'Finish setup' : 'Set up real transcription'}
           </Button>
         </div>
       )}
@@ -292,7 +320,7 @@ export default function RecordPage() {
                     {segmentCount} {segmentCount === 1 ? 'segment' : 'segments'} captured
                     {session?.demo && ' · demo mode'}
                   </p>
-                  {demoVoice && (
+                  {willFakeTranscript && (
                     <span className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-amber/15 px-2.5 py-0.5 text-xs font-medium text-amber">
                       <AlertTriangle size={12} />
                       Demo voice — sample text, not your words
@@ -328,8 +356,8 @@ export default function RecordPage() {
                   </Button>
                 </div>
                 <p className="text-center text-xs text-t3">
-                  {demoVoice
-                    ? 'Demo voice is on, so the transcript will be sample text — switch engines in Settings → Transcription for your real words.'
+                  {willFakeTranscript
+                    ? 'Heads up: the transcript will be sample text until a real engine is set up in Settings — not your real words yet.'
                     : "We'll transcribe everything and build your study kit automatically."}
                 </p>
               </div>
