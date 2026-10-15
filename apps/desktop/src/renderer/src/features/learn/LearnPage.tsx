@@ -10,6 +10,7 @@ import {
   Network,
   Puzzle,
   Sparkles,
+  Swords,
   Trophy,
   Zap,
   type LucideIcon,
@@ -40,6 +41,7 @@ import { QuizRush } from './games/QuizRush';
 import { ConceptMatch } from './games/ConceptMatch';
 import { MemoryGame } from './games/MemoryGame';
 import { ConceptMap } from './games/ConceptMap';
+import { MonsterQuest } from './games/MonsterQuest';
 
 /** Per-game presentation metadata for the hub cards. */
 interface Activity {
@@ -55,6 +57,7 @@ const ACTIVITIES: Activity[] = [
   { kind: 'match', title: 'Concept Match', tagline: 'Pair each term with its definition against the clock.', icon: Puzzle, accent: 'from-sky to-primary' },
   { kind: 'memory', title: 'Memory Game', tagline: 'Flip cards to find hidden term pairs.', icon: Brain, accent: 'from-accent to-sky' },
   { kind: 'map', title: 'Concept Map', tagline: 'Explore an interactive graph and timeline.', icon: Network, accent: 'from-primary to-sky' },
+  { kind: 'quest', title: 'Monster Quest', tagline: 'Walk your knight to the monster and battle it with answers.', icon: Swords, accent: 'from-rose to-primary' },
 ];
 
 const BEST_KEY = (lectureId: string, kind: GameKind) => `sb:learn:best:${lectureId}:${kind}`;
@@ -139,6 +142,7 @@ export default function LearnPage() {
       quiz: readBest(lectureId, 'quiz'),
       match: readBest(lectureId, 'match'),
       memory: readBest(lectureId, 'memory'),
+      quest: readBest(lectureId, 'quest'),
     });
   }, [lectureId]);
 
@@ -157,6 +161,7 @@ export default function LearnPage() {
       match: { ok: pairs.length >= 3, reason: 'Needs at least 3 concepts.' },
       memory: { ok: memoryPairs.length >= 3, reason: 'Needs at least 3 concepts.' },
       map: { ok: (analysis?.concepts.length ?? 0) >= 1, reason: 'Needs analyzed concepts.' },
+      quest: { ok: questions.length >= 2, reason: 'Needs a couple of quiz questions.' },
     }),
     [questions.length, pairs.length, memoryPairs.length, analysis],
   );
@@ -360,6 +365,13 @@ export default function LearnPage() {
           <MemoryGame
             pairs={memoryPairs}
             onComplete={(c) => handleComplete('memory', c)}
+            onExit={() => setActive(null)}
+          />
+        )}
+        {active === 'quest' && (
+          <MonsterQuest
+            questions={questions}
+            onComplete={(c) => handleComplete('quest', c)}
             onExit={() => setActive(null)}
           />
         )}

@@ -93,11 +93,37 @@ export default {
           from: { transform: 'rotate(0deg)' },
           to: { transform: 'rotate(360deg)' },
         },
+        /** Monster Quest ambient motion (SVG groups; pair with [transform-box:fill-box]). */
+        'quest-breathe': {
+          '0%, 100%': { transform: 'scale(1, 1)' },
+          '50%': { transform: 'scale(1.03, 0.97)' },
+        },
+        'quest-blink': {
+          '0%, 90%, 100%': { transform: 'scaleY(1)' },
+          '94%': { transform: 'scaleY(0.1)' },
+        },
+        'quest-idle': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-1.5px)' },
+        },
+        'quest-hop': {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '45%': { transform: 'translateY(-18px)' },
+        },
+        'quest-drift': {
+          from: { transform: 'translateX(0)' },
+          to: { transform: 'translateX(-900px)' },
+        },
       },
       animation: {
         'pulse-dot': 'pulse-dot 1.2s ease-in-out infinite',
         shimmer: 'shimmer 1.8s linear infinite',
         'spin-slow': 'spin-slow 2.4s linear infinite',
+        'quest-breathe': 'quest-breathe 2.2s ease-in-out infinite',
+        'quest-blink': 'quest-blink 3.6s ease-in-out infinite',
+        'quest-idle': 'quest-idle 1.6s ease-in-out infinite',
+        'quest-hop': 'quest-hop 0.6s ease-in-out 3',
+        'quest-drift': 'quest-drift 90s linear infinite',
       },
     },
   },

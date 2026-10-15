@@ -24,7 +24,7 @@ _Local‑first • Offline‑capable • Multi‑provider AI • Extensible via 
 | 📝 **Automatic study materials** | Beautiful notes, concise & detailed summaries, study guides, flashcards, MCQ / short‑answer quizzes, practice tests, review sheets, cheat sheets, vocabulary & glossaries — at Easy / Medium / Hard difficulty. |
 | 💡 **Explain anything** | Click any concept for a simple, analogy‑driven, step‑by‑step, or visual (diagram) explanation. Not clicking? Hit **“I still don’t understand”** and it re‑explains a different way. |
 | 🖼️ **AI slideshow generator** | Auto‑builds presentation decks (titles, diagrams, timelines, charts, speaker notes) and exports to **PDF, PowerPoint, Markdown, and NotebookLM**. |
-| 🎮 **Interactive learning** | Concept‑match, memory games, quiz rush, and interactive concept maps / timelines — with XP, levels, streaks, badges, and achievements. |
+| 🎮 **Interactive learning** | Concept‑match, memory games, quiz rush, a Monster Quest battle game, and interactive concept maps / timelines — with XP, levels, streaks, badges, and achievements. |
 | 🔎 **Ask your lectures** | ChatGPT‑style Q&A grounded in *your* lectures: “What did my biology professor say about DNA replication?” — answered with citations across the whole semester. |
 | 📈 **Smart Review** | Before exams: cumulative review, likely questions, weak areas, and a recommended study order. |
 | 🗂️ **Organized by class** | A sidebar of color‑coded courses, each holding its lectures, transcripts, notes, quizzes, and slides. |

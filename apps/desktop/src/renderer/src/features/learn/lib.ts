@@ -6,7 +6,7 @@ import type { LectureAnalysis, QuizContent, McqQuestion } from '@studdybuddy/sha
  * framework-free so the games stay thin and everything is unit-testable.
  */
 
-export type GameKind = 'match' | 'memory' | 'quiz' | 'map';
+export type GameKind = 'match' | 'memory' | 'quiz' | 'map' | 'quest';
 
 /** A term ↔ definition pairing used by Concept Match and the Memory Game. */
 export interface Pair {
@@ -17,7 +17,7 @@ export interface Pair {
   importance: number;
 }
 
-/** One normalized multiple-choice question for Quiz Rush. */
+/** One normalized multiple-choice question for Quiz Rush and Monster Quest. */
 export interface RushQuestion {
   id: string;
   prompt: string;
