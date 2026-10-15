@@ -14,7 +14,8 @@ export const VIEW_H = 320;
 export const GROUND_Y = 262;
 export const WORLD_W = 1400;
 
-export const HERO_MIN_X = 40;
+/** Far enough from the left edge that the sword stays in view when the hero faces left. */
+export const HERO_MIN_X = 52;
 export const HERO_START_X = 90;
 export const MONSTER_X = 1230;
 /** How close (world px) the hero gets before the monster blocks the path. */

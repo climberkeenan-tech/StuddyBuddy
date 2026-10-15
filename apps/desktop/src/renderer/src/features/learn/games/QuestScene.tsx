@@ -1,4 +1,4 @@
-import { memo, useId, type ReactNode } from 'react';
+import { memo, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { cn } from '@renderer/lib/cn';
 import {
   GROUND_Y,
@@ -76,6 +76,13 @@ export interface QuestSceneProps {
   monsterName: string;
   label: string;
 }
+
+/**
+ * Scene text is drawn in viewBox units, so it shrinks with the scene on narrow
+ * screens. Labels scale back up below this rendered width (px) to stay readable.
+ */
+const LABEL_REF_PX = 620;
+const MAX_LABEL_SCALE = 2.2;
 
 /** Round to one decimal so path strings and transforms stay short. */
 const r1 = (n: number) => Math.round(n * 10) / 10;
@@ -585,6 +592,21 @@ function Puff({ progress }: { progress: number }) {
 
 export function QuestScene({ hero, heroFx, monsterFx, popups, monsterName, label }: QuestSceneProps) {
   const skyId = `quest-sky-${useId().replace(/:/g, '')}`;
+  const svgRef = useRef<SVGSVGElement>(null);
+  const [labelScale, setLabelScale] = useState(1);
+
+  useEffect(() => {
+    const el = svgRef.current;
+    if (!el) return;
+    const update = () => {
+      const width = el.getBoundingClientRect().width;
+      if (width > 0) setLabelScale(r1(Math.min(MAX_LABEL_SCALE, Math.max(1, LABEL_REF_PX / width))));
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
   const cam = cameraX(hero.x);
   const layer = (factor: number) => `translate(${r1(-cam * factor)} 0)`;
   const pose = walkPose(hero.walkPhase, hero.walking);
@@ -594,6 +616,7 @@ export function QuestScene({ hero, heroFx, monsterFx, popups, monsterName, label
 
   return (
     <svg
+      ref={svgRef}
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
       role="img"
       aria-label={label}
@@ -635,16 +658,16 @@ export function QuestScene({ hero, heroFx, monsterFx, popups, monsterName, label
         {monsterFx.gone < 1 && <MonsterSprite fx={monsterFx} />}
         <Puff progress={puff} />
         {monsterFx.hpPct !== null && monsterFx.gone === 0 && (
-          <g transform="translate(0 -160)">
+          <g transform={`translate(0 -146) scale(${labelScale})`}>
             {/* Nameplate on its own backing so clouds and the sun never wash it out. */}
-            <rect x={-52} y={-18} width={104} height={32} rx={8} className="fill-black/45" />
-            <text y={-4} textAnchor="middle" fontSize={11.5} fontWeight={600} className="fill-white">
+            <rect x={-52} y={-32} width={104} height={32} rx={8} className="fill-black/45" />
+            <text y={-18} textAnchor="middle" fontSize={11.5} fontWeight={600} className="fill-white">
               {monsterName}
             </text>
-            <rect x={-42} y={3} width={84} height={7} rx={3.5} className="fill-white/20" />
+            <rect x={-42} y={-11} width={84} height={7} rx={3.5} className="fill-white/20" />
             <rect
               x={-42}
-              y={3}
+              y={-11}
               width={r1(84 * Math.max(0, monsterFx.hpPct))}
               height={7}
               rx={3.5}
@@ -657,37 +680,37 @@ export function QuestScene({ hero, heroFx, monsterFx, popups, monsterName, label
       <g transform={`translate(${heroX} ${GROUND_Y})`}>
         <HeroSprite pose={pose} facing={hero.facing} walking={hero.walking} fx={heroFx} />
         {heroFx.alert > 0 && heroFx.alert < 1 && (
-          <text
-            y={-104 - heroFx.alert * 8}
-            textAnchor="middle"
-            fontSize={26}
-            fontWeight={800}
-            className="fill-amber"
-            style={{ opacity: r1(1 - heroFx.alert ** 3) }}
-          >
-            !
-          </text>
+          <g transform={`translate(0 ${r1(-104 - heroFx.alert * 8)}) scale(${labelScale})`}>
+            <text
+              textAnchor="middle"
+              fontSize={26}
+              fontWeight={800}
+              className="fill-amber"
+              style={{ opacity: r1(1 - heroFx.alert ** 3) }}
+            >
+              !
+            </text>
+          </g>
         )}
       </g>
 
       {popups.map((p) => {
         if (p.progress <= 0 || p.progress >= 1) return null;
-        const x = p.target === 'monster' ? monsterX - 62 : heroX;
+        const x = p.target === 'monster' ? monsterX - 62 - 24 * (labelScale - 1) : heroX;
         const y = GROUND_Y - (p.target === 'monster' ? 104 : 108) - p.progress * 28;
         return (
-          <text
-            key={p.id}
-            x={x}
-            y={r1(y)}
-            textAnchor="middle"
-            fontSize={18}
-            fontWeight={800}
-            strokeWidth={3}
-            className={cn('stroke-black/40', p.target === 'monster' ? 'fill-gold' : 'fill-rose')}
-            style={{ opacity: r1(1 - p.progress), paintOrder: 'stroke' }}
-          >
-            {p.text}
-          </text>
+          <g key={p.id} transform={`translate(${r1(x)} ${r1(y)}) scale(${labelScale})`}>
+            <text
+              textAnchor="middle"
+              fontSize={18}
+              fontWeight={800}
+              strokeWidth={4}
+              className={cn('stroke-black/70', p.target === 'monster' ? 'fill-gold' : 'fill-rose')}
+              style={{ opacity: r1(1 - p.progress), paintOrder: 'stroke' }}
+            >
+              {p.text}
+            </text>
+          </g>
         );
       })}
     </svg>

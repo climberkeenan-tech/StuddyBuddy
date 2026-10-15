@@ -118,17 +118,22 @@ export function MonsterQuest({ questions, onComplete, onExit }: MonsterQuestProp
   const runLoop = useCallback(() => {
     if (frame.current !== null) return;
     let last = now();
-    const tick = (t: number) => {
+    const tick = () => {
+      // One clock for frames and effect timestamps (some environments pass rAF
+      // a timestamp from a different origin than performance.now()).
+      const t = now();
       const dt = t - last;
       last = t;
       const { left, right } = held.current;
       const dir: WalkDir = phaseRef.current !== 'explore' || left === right ? 0 : right ? 1 : -1;
       setHero((h) => stepHero(h, dir, dt));
-      setClock(t);
-      frame.current = dir !== 0 || t < animUntil.current ? requestAnimationFrame(tick) : null;
+      // Under reduced motion battle effects jump to their end state, so the
+      // clock never falls behind that target and frames only run for walking.
+      setClock(calm ? Math.max(t, animUntil.current) : t);
+      frame.current = dir !== 0 || (!calm && t < animUntil.current) ? requestAnimationFrame(tick) : null;
     };
     frame.current = requestAnimationFrame(tick);
-  }, []);
+  }, [calm]);
 
   /** Keep the clock running for `ms` (or jump straight to the end under reduced motion). */
   const animate = useCallback(
@@ -143,7 +148,9 @@ export function MonsterQuest({ questions, onComplete, onExit }: MonsterQuestProp
   const hold = useCallback(
     (side: 'left' | 'right', down: boolean) => {
       held.current[side] = down;
-      if (down) runLoop();
+      // Also restart on release: letting go of one of two held directions
+      // should resume walking the other way.
+      if (held.current.left || held.current.right) runLoop();
     },
     [runLoop],
   );
@@ -192,6 +199,12 @@ export function MonsterQuest({ questions, onComplete, onExit }: MonsterQuestProp
   const outcome = battleOutcome(battle);
   const current = order.length > 0 ? order[turn % order.length] : undefined;
   const answered = selected !== null;
+  const actionsRef = useRef<HTMLDivElement>(null);
+
+  // The feedback card pushes the advance button down; keep it on screen (phones).
+  useEffect(() => {
+    if (answered) actionsRef.current?.scrollIntoView?.({ block: 'nearest', behavior: calm ? 'auto' : 'smooth' });
+  }, [answered, calm]);
 
   function start() {
     held.current = { left: false, right: false };
@@ -233,7 +246,8 @@ export function MonsterQuest({ questions, onComplete, onExit }: MonsterQuestProp
         { id: next.asked, at: hit, target: correct ? 'monster' : 'hero', text: correct ? '-1 HP' : '-1 ♥' },
       ],
     }));
-    animate(result ? 1800 : 1000);
+    // Run until the damage popup has fully faded (or the defeat plays out).
+    animate(result ? 1800 : HIT_DELAY_MS + POPUP_MS + 50);
   }
 
   function finish() {
@@ -477,7 +491,7 @@ export function MonsterQuest({ questions, onComplete, onExit }: MonsterQuestProp
               )}
             </motion.div>
 
-            <div className="flex justify-between">
+            <div ref={actionsRef} className="flex justify-between">
               <Button variant="ghost" onClick={onExit}>
                 Quit
               </Button>
